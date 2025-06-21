@@ -1,56 +1,32 @@
 // npm init -y
-// npm install googleapis nodemailer dotenv --save
-// node email-oauth.js
+// npm install nodemailer dotenv --save
+// node email-nm.js
 
 const nodemailer = require('nodemailer');
-const { google } = require('googleapis');
-const OAuth2 = google.auth.OAuth2;
 require('dotenv').config();
 
-async function sendEmailWithOAuth2() {
+async function sendEmailWithAppPassword(to, subject, body) {
   try {
-    // Create OAuth2 client
-    const oauth2Client = new OAuth2(
-      process.env.CLIENT_ID,
-      process.env.CLIENT_SECRET,
-      "https://developers.google.com/oauthplayground" // Redirect URL
-    );
+    // Validate required parameters
+    if (!to || !subject || !body) {
+      throw new Error('Missing required parameters: to, subject, and body are required');
+    }
 
-    // Set credentials
-    oauth2Client.setCredentials({
-      refresh_token: process.env.REFRESH_TOKEN
-    });
-
-    // Get access token
-    const accessToken = await new Promise((resolve, reject) => {
-      oauth2Client.getAccessToken((err, token) => {
-        if (err) {
-          console.error('Error getting access token:', err);
-          reject(err);
-        }
-        resolve(token);
-      });
-    });
-
-    // Create transporter
+    // Create transporter using Gmail app password
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        type: 'OAuth2',
         user: process.env.GMAIL_USER,
-        clientId: process.env.CLIENT_ID,
-        clientSecret: process.env.CLIENT_SECRET,
-        refreshToken: process.env.REFRESH_TOKEN,
-        accessToken: accessToken
+        pass: process.env.GMAIL_APP_PASSWORD
       }
     });
 
-    // Send email
+    // Send email with provided parameters
     const info = await transporter.sendMail({
-      from: `"Pzizm Agent" <${process.env.GMAIL_USER}>`,
-      to: 'richard.genet@gmail.com',
-      subject: 'Test Email from Conversational Agent (OAuth2)',
-      text: 'This is a test email from my GCP conversational agent using OAuth2. https://cnn.com'
+      from: `"Prizm Agent" <${process.env.GMAIL_USER}>`,
+      to: to,
+      subject: subject,
+      text: body
     });
 
     console.log('Email sent successfully:', info.messageId);
@@ -61,5 +37,23 @@ async function sendEmailWithOAuth2() {
   }
 }
 
-// Execute the function
-sendEmailWithOAuth2().catch(console.error);
+// Export the function for use in other modules
+module.exports = { sendEmailWithAppPassword };
+
+// Test function (for backward compatibility)
+async function testEmail() {
+  try {
+    await sendEmailWithAppPassword(
+      'richard.genet@gmail.com',
+      'Test Email from Conversational Agent (App Password)',
+      'This is a test email from my GCP conversational agent using Gmail app password. https://cnn.com'
+    );
+  } catch (error) {
+    console.error('Test failed:', error);
+  }
+}
+
+// Execute test if run directly
+if (require.main === module) {
+  testEmail();
+}

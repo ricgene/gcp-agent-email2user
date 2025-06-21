@@ -1,5 +1,6 @@
 const {google} = require('googleapis');
 const gmail = google.gmail('v1');
+const { sendEmailWithAppPassword } = require('./email-nm.js');
 
 async function sendEmail(auth, to, subject, messageText) {
   // Create the email content
@@ -38,3 +39,16 @@ async function sendEmail(auth, to, subject, messageText) {
     throw error;
   }
 }
+
+exports.sendEmail = async (req, res) => {
+  const { to, subject, body } = req.body;
+  if (!to || !subject || !body) {
+    return res.status(400).send('Missing to, subject, or body');
+  }
+  try {
+    await sendEmailWithAppPassword(to, subject, body);
+    res.status(200).send('Email sent');
+  } catch (err) {
+    res.status(500).send('Failed to send email: ' + err.message);
+  }
+};
